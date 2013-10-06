@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-module
+  type="WEB"
+  name="MongoDBForSpring_1000"
+  id="myeclipse.1336784434453"
+  context-root="/MongoDBForSpring"
+  j2ee-spec="5.0"
+  archive="MongoDBForSpring_1000.war">
+  <attributes>
+    <attribute name="webrootdir" value="WebRoot" />
+  </attributes>
+</project-module>
+

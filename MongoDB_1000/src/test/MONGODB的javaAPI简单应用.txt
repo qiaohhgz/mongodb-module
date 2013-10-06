@@ -1,0 +1,209 @@
+MONGODB的javaAPI简单应用  
+
+2011-02-23 15:42:57|  分类： MONGODB |字号 订阅
+ 
+1 建立连接
+  要建立MongoDB的连接，你只要指定要连接到的数据库就可以。这个数据库不一定存在，如果不存在，MongoDB会先为你建立这个
+
+库。同时，在连接时你也可以具体指定要连接到的网络地址和端口。下面的是连接本机数据库的一些例子：
+
+import com.mongodb.Mongo;
+import com.mongodb.DBCollection;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.mongodb.DBCursor;
+import com.mongodb.MongoAdmin;
+
+Mongo db = new Mongo("mydb");
+Mongo db = new Mongo("localhost", "mydb");
+Mongo db = new Mongo("localhost", 27017, "mydb");
+
+2 安全验证（非必选）
+MongoDB服务可以在安全模式运行，此时任何客户端要连接数据库时需使用用户名和密码。在JAVA中可使用如下方法连接：
+
+boolean auth = db.authenticate(userName, password);
+
+如果用户名密码验证通过，返回值为true，否则为false
+
+3 获取集合列表
+每个数据库都存在零个或多个集合，需要时你可以获得他们的列表：
+
+Set<String> colls = db.getCollectionNames();
+for(String s : colls){
+ System.out.println(s);
+}
+
+4 获得一个集合
+要获得某个特定集合，你可以指定集合的名字，并使用getCollection()方法：
+
+DBCollection coll = db.getCollection("testCollection");
+
+当你获取了这个集合对象，你就可以对数据进行增删查改之类的操作。
+
+5 插入文档
+当你获得了一个集合对象，你就可以把文档插入到这个对象中。例如，存在一个JSON式的小文档：
+{
+ "name" : "MongoDB",
+ "type" : "database",
+ "count" : 1,
+ "info" : {
+   x : 203,
+   y : 102
+  }
+}
+请注意，这个文档包含一个内部文档。我们可以使用BasicDBObject类来创建这个文档，并且使用insert()方法方便地将它插入到集
+
+合中。
+
+BasicDBObject doc = new BasicDBObject();
+doc.put("name", "MongoDB");
+doc.put("type", "database");
+doc.put("count", 1);
+
+BasicDBObject info = new BasicDBObject();
+info.put("x", 203);
+info.put("y", 102);
+
+doc.put("info", info);
+
+coll.insert(doc);
+
+6 使用findOne()查找集合中第一个文档
+要查找我们上一步插入的那个文档，可以简单地使用findOne()操作来获取集合中第一个文档。这个方法返回一个单一文档（这是相对于使用DBCursor的find()操作的返回），这对于只有一个文档或我们刚插入第一个文档时很有用，因为此时并不需要使用光标。
+
+DBObject myDoc = coll.findOne();
+System.out.println(myDoc);
+
+返回类似：
+{
+ "_id" : "ac907a1f5b9d5e4a233ed300" ,
+ "name" : "MongoDB" ,
+ "type" : 1 , 
+ "info" : { 
+  "x" : 203 ,
+  "y" : 102} , 
+ "_ns" : "testCollection"
+}
+
+注意_id和_ns元素是由MongoDB自动加入你的文档。记住：MongoDB内部存储使用的元素名是以“_”做为开始。
+
+7 加入多种文档
+为了做更多有趣的查询试验，让我们向集合中加入多种文档类型，象：
+{
+ "i" : value
+}
+可以通过循环来实现
+
+for(int i = 0; i < 100; i++){
+ coll.insert(new BasicDBObject().append("i", i));
+}
+
+注意我们可以在一个集合中插入不同类型的文档，这就是我们所说的“模式自由”（schema-free）。
+
+8 统计文档数量
+ 使用getCount()方法
+
+System.out.println(coll.getCount());
+
+9 使用光标（cursor）来获取全部文档
+为了获取集合中的所有文档，我们可以使用find()方法。这个方法返回一上DBCursor对象，来允许我们将符合查询条件的文档迭代
+
+出来。
+
+DBCursor cur = coll.find();
+while(cur.hasNext()){
+ System.out.println(cur.next());
+}
+
+10 在查询中获取单一文档
+我们可以创建一个查询，并传递给find()方法来获取集合中所有文档的一个子集。例如，我们想要查询域名为"i"，并且值为71的文档：
+
+BasicDBObject query = new BasicDBObject();
+query.put("i", 71);
+cur = coll.find(query);
+while(cur.hasNext()){
+ System.out.println(cur.next());
+}
+
+11 使用条件查询获取集合
+例如，我们想要查询所有i>50的文档：
+
+BasicDBObject query = new BasicDBObject();
+query.put("i", new BasicDBObject("$gt", 50));
+cur = coll.find(query);
+while(cur.hasNext()){
+ System.out.println(cur.next());
+}
+
+当然，我们也可以做20 < i <= 30的查询
+
+BasicDBObject query = new BasicDBObject();
+query.put("i", new BasicDBObject("$gt", 20).append("$lte", 30));
+cur = coll.find(query);
+while(cur.hasNext()){
+ System.out.println(cur.next());
+}
+
+12 创建索引
+MongoDB支持索引，而且很容易在集合上增加索引。要创建索引，只需要指定要加索引的属性，并且指定升序（1）或降序即可（-1）。
+
+coll.createIndex(new BasicDBObject("i", 1));
+
+13 获取索引列表
+
+List<DBObject> list = coll.getIndexInfo();
+for(DBObject o : list){
+ System.out.println(o);
+}
+
+14 MongoDB管理函数
+管理函数在com.mongodb.MongoAdmin类中定义。
+例A：获取数据库列表
+ MongoAdmin admin = new MongoAdmin();
+ for(String s : admin.getDatabaseNames()){
+  System.out.println(s);
+ }
+
+例B：获取数据库对象
+ Mongo m = admin.getDB("mydb");
+
+例C：删除数据库
+ admin.dropDatabase("mydb");
+
+15 用DBObject存储JAVA对象
+MongoDB for JAVA驱动中提供了用于向数据库中存储普通对象的接口DBObject
+例如，存在一个需要存储的对象类Tweet
+public class Tweet implements DBObject{
+ /*...*/
+}
+可以使用如下代码：
+
+Tweet myTweet = new Tweet();
+myTweet.put("user", userId);
+myTweet.put("message", message);
+myTweet.put("date", new Date());
+
+collection.insert(myTweet);
+
+当一个文档从MongoDB中取出时，它会自动把文档转换成DBObject接口类型，要将它实例化为你的对象，需使用
+
+DBCollection.setObjectClass()。
+collection.setObjectClass(Tweet);
+Tweet myTweet = (Tweet)collection.findOne();
+
+16 JAVA驱动的并发性
+JAVA的MongoDB驱动是线程安全的。如果你将它用在WEB服务中，可以创建它的一个单例，并在所有请求中使用它。
+
+然而，如果你需要在一个会话（例如HTTP请求）中保证事务一致性，也许你会希望在这个会话中对驱动使用同一个端口。这仅仅在
+
+请求量非常大的环境中，例如你经常会读取刚写入的数据。
+为了这一点，你需要使用如下代码：
+Mongo m;
+m.restartStart();
+
+// code.........
+
+m.requestDone();
+
+
+以上介绍了简单的mongoDB使用，更多信息请查阅MongoDB API for Java。
